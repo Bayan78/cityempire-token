@@ -635,26 +635,33 @@ function showNotif(text) {
 // ============ MAP ============
 function buildMap() {
   const grid = document.getElementById('levelsGrid');
+  if(!grid) return;
   grid.innerHTML = '';
   for(let i=1;i<=20;i++) {
     const btn = document.createElement('div');
     btn.className = 'level-btn';
+    btn.style.cssText = 'aspect-ratio:1;border-radius:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border:3px solid rgba(255,255,255,0.3);transition:transform 0.1s;position:relative;min-height:60px;';
     const completed = state.completedLevels[i];
     if(completed) {
-      btn.className += ' completed';
-      btn.innerHTML = `<div class="num">${i}</div><div class="stars-small">${'⭐'.repeat(completed)}</div>`;
+      btn.style.background = 'linear-gradient(135deg, #00cc66, #009432)';
+      btn.style.borderColor = '#2ed573';
+      btn.innerHTML = `<div style="font-size:18px;font-weight:bold">${i}</div><div style="font-size:12px">${'⭐'.repeat(completed)}</div>`;
       btn.onclick = ()=>startLevel(i);
     } else if(i === state.currentLevel) {
-      btn.className += ' current';
-      btn.innerHTML = `<div class="num" style="color:#1a0533">${i}</div><div class="stars-small" style="color:#1a0533">▶️</div>`;
+      btn.style.background = 'linear-gradient(135deg, #f0c040, #ff8c00)';
+      btn.style.borderColor = 'white';
+      btn.style.animation = 'pulse 2s ease infinite';
+      btn.innerHTML = `<div style="font-size:18px;font-weight:bold;color:#1a0533">${i}</div><div style="font-size:12px;color:#1a0533">▶️</div>`;
       btn.onclick = ()=>startLevel(i);
-    } else if(i <= state.currentLevel) {
-      btn.className += ' unlocked';
-      btn.innerHTML = `<div class="num">${i}</div>`;
+    } else if(i < state.currentLevel) {
+      btn.style.background = 'linear-gradient(135deg, #4a0080, #2d0050)';
+      btn.innerHTML = `<div style="font-size:18px;font-weight:bold">${i}</div>`;
       btn.onclick = ()=>startLevel(i);
     } else {
-      btn.className += ' locked';
-      btn.innerHTML = `<div class="lock">🔒</div><div class="num" style="font-size:12px">${i}</div>`;
+      btn.style.background = 'rgba(255,255,255,0.05)';
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+      btn.innerHTML = `<div style="font-size:20px">🔒</div><div style="font-size:12px">${i}</div>`;
     }
     grid.appendChild(btn);
   }
