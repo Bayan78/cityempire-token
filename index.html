@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CityEmpire Match</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: linear-gradient(135deg, #1a0533 0%, #2d1b69 50%, #11998e 100%);
+    min-height: 100vh;
+    font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+    color: white;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(180deg, #4a0080 0%, #2d0050 100%);
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid #f0c040;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  }
+  .header-left { display: flex; align-items: center; gap: 8px; }
+  .lives { display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 20px; }
+  .lives span { font-size: 18px; }
+  .city-balance { display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #f0c040, #ff8c00); padding: 5px 12px; border-radius: 20px; color: #1a0533; font-weight: bold; }
+  .level-info { text-align: center; }
+  .level-info .chapter { font-size: 11px; opacity: 0.8; }
+  .level-info .level-num { font-size: 16px; font-weight: bold; color: #f0c040; }
+
+  /* WIZARD */
+  .wizard-section {
+    text-align: center;
+    padding: 15px;
+    position: relative;
+  }
+  .wizard { font-size: 80px; animation: float 3s ease-in-out infinite; display: inline-block; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  .wizard-bubble {
+    background: white;
+    color: #333;
+    padding: 10px 15px;
+    border-radius: 15px;
+    font-size: 13px;
+    margin: 8px auto;
+    max-width: 280px;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+  .wizard-bubble::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-bottom-color: white;
+    border-top: 0;
+  }
+
+  /* GAME BOARD */
+  .game-container {
+    padding: 10px 15px;
+  }
+  .progress-bar-container {
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    height: 20px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff88, #00cc66);
+    border-radius: 8px;
+    transition: width 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    color: #003300;
+  }
+  .moves-counter {
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #f0c040;
+  }
+  .moves-counter span { font-size: 20px; font-weight: bold; }
+
+  /* BOARD */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    max-width: 360px;
+    margin: 0 auto;
+    padding: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 15px;
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  .cell {
+    aspect-ratio: 1;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    border: 2px solid rgba(255,255,255,0.2);
+    position: relative;
+    user-select: none;
+  }
+  .cell:active { transform: scale(0.9); }
+  .cell.selected {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px 3px rgba(255,255,255,0.8);
+    border-color: white;
+    z-index: 10;
+  }
+  .cell.matched {
+    animation: matchPop 0.3s ease forwards;
+  }
+  @keyframes matchPop {
+    0%{transform:scale(1.3);opacity:1}
+    100%{transform:scale(0);opacity:0}
+  }
+  .cell.hint { animation: hintPulse 0.8s ease infinite; }
+  @keyframes hintPulse { 0%,100%{box-shadow:0 0 5px rgba(255,255,0,0.3)} 50%{box-shadow:0 0 15px rgba(255,255,0,0.9)} }
+
+  /* COLORS */
+  .color-0 { background: linear-gradient(135deg, #ff4757, #c44569); }
+  .color-1 { background: linear-gradient(135deg, #2ed573, #009432); }
+  .color-2 { background: linear-gradient(135deg, #1e90ff, #0056b3); }
+  .color-3 { background: linear-gradient(135deg, #ffa502, #e67e00); }
+  .color-4 { background: linear-gradient(135deg, #a55eea, #6c3483); }
+  .color-5 { background: linear-gradient(135deg, #ff6b9d, #c0392b); }
+
+  /* TARGETS */
+  .targets {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+  }
+  .target {
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 8px 12px;
+    text-align: center;
+    border: 2px solid rgba(255,255,255,0.3);
+    min-width: 60px;
+  }
+  .target .emoji { font-size: 22px; }
+  .target .count { font-size: 13px; font-weight: bold; color: #f0c040; }
+  .target.completed { border-color: #2ed573; background: rgba(46,213,115,0.2); }
+  .target.completed .count { color: #2ed573; }
+
+  /* OVERLAY */
+  .overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay.show { display: flex; }
+  .popup {
+    background: linear-gradient(135deg, #2d0050, #4a0080);
+    border: 3px solid #f0c040;
+    border-radius: 25px;
+    padding: 30px;
+    text-align: center;
+    max-width: 300px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    animation: popIn 0.3s ease;
+  }
+  @keyframes popIn { 0%{transform:scale(0.5);opacity:0} 100%{transform:scale(1);opacity:1} }
+  .popup h2 { font-size: 28px; margin-bottom: 10px; }
+  .popup p { margin-bottom: 15px; opacity: 0.9; font-size: 14px; }
+  .popup .reward { font-size: 36px; margin: 10px 0; }
+  .popup .city-reward { font-size: 22px; color: #f0c040; font-weight: bold; margin-bottom: 15px; }
+  .stars { font-size: 36px; margin: 10px 0; letter-spacing: 5px; }
+
+  /* BUTTONS */
+  .btn {
+    padding: 12px 25px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.1s, box-shadow 0.1s;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-gold {
+    background: linear-gradient(135deg, #f0c040, #ff8c00);
+    color: #1a0533;
+    box-shadow: 0 4px 15px rgba(240,192,64,0.4);
+  }
+  .btn-purple {
+    background: linear-gradient(135deg, #a55eea, #6c3483);
+    color: white;
+    box-shadow: 0 4px 15px rgba(165,94,234,0.4);
+  }
+  .btn-gray {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+
+  /* MAP SCREEN */
+  .map-screen { display: none; }
+  .map-screen.active { display: block; }
+  .game-screen { display: none; }
+  .game-screen.active { display: block; }
+  .shop-screen { display: none; }
+  .shop-screen.active { display: block; }
+
+  /* CHAPTER MAP */
+  .chapter-title {
+    text-align: center;
+    padding: 15px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #f0c040;
+    text-shadow: 0 2px 10px rgba(240,192,64,0.5);
+  }
+  .levels-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    padding: 10px 15px;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  .level-btn {
+    aspect-ratio: 1;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 3px solid rgba(255,255,255,0.3);
+    transition: transform 0.1s;
+    position: relative;
+  }
+  .level-btn:active { transform: scale(0.95); }
+  .level-btn.unlocked { background: linear-gradient(135deg, #4a0080, #2d0050); }
+  .level-btn.completed { background: linear-gradient(135deg, #00cc66, #009432); border-color: #2ed573; }
+  .level-btn.current { background: linear-gradient(135deg, #f0c040, #ff8c00); border-color: white; animation: pulse 2s ease infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 10px rgba(240,192,64,0.5)} 50%{box-shadow:0 0 25px rgba(240,192,64,0.9)} }
+  .level-btn.locked { background: rgba(255,255,255,0.05); opacity: 0.5; cursor: not-allowed; }
+  .level-btn .num { font-size: 18px; font-weight: bold; }
+  .level-btn .stars-small { font-size: 12px; }
+  .level-btn .lock { font-size: 20px; }
+
+  /* SHOP */
+  .shop-title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #f0c040;
+    padding: 15px;
+  }
+  .shop-items {
+    padding: 10px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .shop-item {
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 15px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  .shop-item .item-icon { font-size: 40px; }
+  .shop-item .item-info { flex: 1; }
+  .shop-item .item-name { font-size: 16px; font-weight: bold; }
+  .shop-item .item-desc { font-size: 12px; opacity: 0.7; }
+  .shop-item .item-price {
+    background: linear-gradient(135deg, #f0c040, #ff8c00);
+    color: #1a0533;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(180deg, #2d0050, #1a0033);
+    border-top: 2px solid #f0c040;
+    display: flex;
+    padding: 8px 0;
+    z-index: 50;
+  }
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+    padding: 5px;
+    transition: opacity 0.1s;
+  }
+  .nav-btn:active { opacity: 0.7; }
+  .nav-btn .nav-icon { font-size: 24px; }
+  .nav-btn .nav-label { font-size: 10px; opacity: 0.8; }
+  .nav-btn.active .nav-icon { filter: drop-shadow(0 0 5px #f0c040); }
+  .nav-btn.active .nav-label { color: #f0c040; }
+
+  .pb { padding-bottom: 70px; }
+
+  /* SCORE */
+  .score-display {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 5px;
+  }
+  .score-display span { color: #f0c040; font-weight: bold; font-size: 16px; }
+
+  /* BOOSTERS */
+  .boosters {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 8px 0;
+  }
+  .booster {
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
+    padding: 8px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .booster:active { transform: scale(0.95); }
+  .booster .b-icon { font-size: 20px; }
+  .booster .b-count { font-size: 11px; color: #f0c040; }
+
+  /* NOTIFICATION */
+  .notif {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #f0c040, #ff8c00);
+    color: #1a0533;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+  }
+  .notif.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="lives">❤️ <span id="livesCount">5</span></div>
+  </div>
+  <div class="level-info">
+    <div class="chapter" id="chapterLabel">Глава 1 • Волшебный лес</div>
+    <div class="level-num" id="levelLabel">Уровень 1</div>
+  </div>
+  <div class="city-balance">🪙 <span id="cityBalance">0</span></div>
+</div>
+
+<!-- MAP SCREEN -->
+<div class="map-screen active pb" id="mapScreen">
+  <div style="text-align:center;padding:15px;">
+    <div style="font-size:70px;animation:float 3s ease-in-out infinite;display:inline-block">🧙</div>
+    <div class="wizard-bubble">Выбери уровень и начни приключение! Собирай CITY монеты! 🪙</div>
+  </div>
+  <div class="chapter-title">🏰 Глава 1 — Волшебный лес</div>
+  <div class="levels-grid" id="levelsGrid"></div>
+</div>
+
+<!-- GAME SCREEN -->
+<div class="game-screen pb" id="gameScreen">
+  <div class="wizard-section">
+    <div class="wizard">🧙</div>
+    <div class="wizard-bubble" id="wizardMsg">Собери нужные элементы!</div>
+  </div>
+  <div class="game-container">
+    <div class="score-display">Очки: <span id="scoreDisplay">0</span></div>
+    <div class="targets" id="targetsDisplay"></div>
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar" style="width:0%">0%</div>
+    </div>
+    <div class="moves-counter">Ходов: <span id="movesDisplay">20</span></div>
+    <div class="boosters">
+      <div class="booster" onclick="useBooster('bomb')">
+        <div class="b-icon">💣</div>
+        <div class="b-count" id="bombCount">x3</div>
+      </div>
+      <div class="booster" onclick="useBooster('shuffle')">
+        <div class="b-icon">🔀</div>
+        <div class="b-count" id="shuffleCount">x3</div>
+      </div>
+      <div class="booster" onclick="useBooster('hint')">
+        <div class="b-icon">💡</div>
+        <div class="b-count">∞</div>
+      </div>
+    </div>
+    <div class="board" id="board"></div>
+  </div>
+</div>
+
+<!-- SHOP SCREEN -->
+<div class="shop-screen pb" id="shopScreen">
+  <div class="shop-title">🏪 Магазин CITY</div>
+  <div style="text-align:center;margin-bottom:10px;color:#f0c040;font-size:14px;">
+    Баланс: 🪙 <span id="shopBalance">0</span> CITY
+  </div>
+  <div class="shop-items">
+    <div class="shop-item">
+      <div class="item-icon">❤️</div>
+      <div class="item-info">
+        <div class="item-name">+5 Жизней</div>
+        <div class="item-desc">Полностью восстановить жизни</div>
+      </div>
+      <div class="item-price" onclick="buyItem('lives',500)">500 🪙</div>
+    </div>
+    <div class="shop-item">
+      <div class="item-icon">💣</div>
+      <div class="item-info">
+        <div class="item-name">Бомба x3</div>
+        <div class="item-desc">Уничтожает 9 клеток</div>
+      </div>
+      <div class="item-price" onclick="buyItem('bomb',300)">300 🪙</div>
+    </div>
+    <div class="shop-item">
+      <div class="item-icon">🔀</div>
+      <div class="item-info">
+        <div class="item-name">Перемешать x3</div>
+        <div class="item-desc">Перемешать всю доску</div>
+      </div>
+      <div class="item-price" onclick="buyItem('shuffle',200)">200 🪙</div>
+    </div>
+    <div class="shop-item">
+      <div class="item-icon">+5</div>
+      <div class="item-info">
+        <div class="item-name">+5 Ходов</div>
+        <div class="item-desc">Добавить 5 дополнительных ходов</div>
+      </div>
+      <div class="item-price" onclick="buyItem('moves',400)">400 🪙</div>
+    </div>
+    <div class="shop-item" style="border-color:#f0c040;background:linear-gradient(135deg,rgba(240,192,64,0.2),rgba(255,140,0,0.1))">
+      <div class="item-icon">💎</div>
+      <div class="item-info">
+        <div class="item-name">VIP Пакет</div>
+        <div class="item-desc">x2 CITY за уровни на 7 дней</div>
+      </div>
+      <div class="item-price" onclick="buyItem('vip',2000)">2000 🪙</div>
+    </div>
+    <div class="shop-item" style="border-color:#2ed573;background:linear-gradient(135deg,rgba(46,213,115,0.2),rgba(0,148,50,0.1))">
+      <div class="item-icon">🚀</div>
+      <div class="item-info">
+        <div class="item-name">Вывод CITY</div>
+        <div class="item-desc">Вывести накопленные CITY токены</div>
+      </div>
+      <div class="item-price" onclick="withdrawCity()" style="background:linear-gradient(135deg,#2ed573,#009432);color:white">Вывести</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-btn active" id="navMap" onclick="showScreen('map')">
+    <div class="nav-icon">🗺️</div>
+    <div class="nav-label">Карта</div>
+  </div>
+  <div class="nav-btn" id="navShop" onclick="showScreen('shop')">
+    <div class="nav-icon">🏪</div>
+    <div class="nav-label">Магазин</div>
+  </div>
+  <div class="nav-btn" id="navProfile" onclick="showProfile()">
+    <div class="nav-icon">👤</div>
+    <div class="nav-label">Профиль</div>
+  </div>
+</div>
+
+<!-- WIN POPUP -->
+<div class="overlay" id="winPopup">
+  <div class="popup">
+    <div style="font-size:50px">🧙</div>
+    <h2 style="color:#f0c040">Победа!</h2>
+    <div class="stars" id="winStars">⭐⭐⭐</div>
+    <div class="reward">🎉</div>
+    <div class="city-reward" id="winReward">+50 🪙 CITY</div>
+    <button class="btn btn-gold" onclick="nextLevel()">Следующий уровень ➡️</button>
+    <button class="btn btn-gray" onclick="goToMap()">🗺️ Карта</button>
+  </div>
+</div>
+
+<!-- LOSE POPUP -->
+<div class="overlay" id="losePopup">
+  <div class="popup">
+    <div style="font-size:50px">😔</div>
+    <h2>Не хватило ходов!</h2>
+    <p>Попробуй ещё раз или купи дополнительные ходы</p>
+    <button class="btn btn-gold" onclick="addMoves()">+5 ходов — 400 🪙</button>
+    <button class="btn btn-purple" onclick="restartLevel()">🔄 Попробовать снова</button>
+    <button class="btn btn-gray" onclick="goToMap()">🗺️ Карта</button>
+  </div>
+</div>
+
+<!-- PROFILE POPUP -->
+<div class="overlay" id="profilePopup">
+  <div class="popup">
+    <div style="font-size:50px">🧙</div>
+    <h2 style="color:#f0c040">Мой профиль</h2>
+    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:15px;margin:10px 0;text-align:left">
+      <p>🪙 CITY баланс: <strong id="profileCity" style="color:#f0c040">0</strong></p>
+      <p>🏆 Уровень: <strong id="profileLevel">1</strong></p>
+      <p>⭐ Звёзд: <strong id="profileStars">0</strong></p>
+      <p>❤️ Жизней: <strong id="profileLives">5</strong></p>
+    </div>
+    <button class="btn btn-gold" onclick="closeProfile()">Закрыть</button>
+  </div>
+</div>
+
+<script>
+// ============ GAME STATE ============
+const EMOJIS = ['🔴','🟢','🔵','🟡','🟣','🌸'];
+const COLS = 7, ROWS = 7;
+
+let state = {
+  city: parseInt(localStorage.getItem('city') || '0'),
+  lives: parseInt(localStorage.getItem('lives') || '5'),
+  currentLevel: parseInt(localStorage.getItem('currentLevel') || '1'),
+  totalStars: parseInt(localStorage.getItem('totalStars') || '0'),
+  bombs: parseInt(localStorage.getItem('bombs') || '3'),
+  shuffles: parseInt(localStorage.getItem('shuffles') || '3'),
+  vip: localStorage.getItem('vip') === 'true',
+  completedLevels: JSON.parse(localStorage.getItem('completedLevels') || '{}')
+};
+
+let board = [], selected = null, moves = 20, score = 0;
+let targets = {}, targetProgress = {};
+let gameActive = false;
+
+// ============ LEVELS CONFIG ============
+const LEVELS = {
+  1:  { moves:20, targets:{🔴:10,🟢:10}, reward:30,  msg:"Собери красные и зелёные!" },
+  2:  { moves:22, targets:{🔵:12,🟡:10}, reward:35,  msg:"Синие и жёлтые нужны!" },
+  3:  { moves:25, targets:{🟣:15,🌸:12}, reward:40,  msg:"Фиолетовые и розовые!" },
+  4:  { moves:20, targets:{🔴:8,🔵:8,🟡:8}, reward:50, msg:"Три цвета за раз!" },
+  5:  { moves:18, targets:{🟢:20,🟣:15}, reward:60,  msg:"Много зелёных нужно!" },
+  6:  { moves:22, targets:{🌸:18,🔴:12}, reward:65,  msg:"Розовые — твоя цель!" },
+  7:  { moves:20, targets:{🔵:20,🟡:15}, reward:70,  msg:"Синие волны!" },
+  8:  { moves:15, targets:{🟣:10,🔴:10,🟢:10}, reward:80, msg:"Быстро! Мало ходов!" },
+  9:  { moves:25, targets:{🌸:25,🔵:20}, reward:90,  msg:"Большой уровень!" },
+  10: { moves:20, targets:{🔴:15,🟢:15,🔵:15}, reward:100, msg:"Финальный! Покажи мастерство!" },
+  11: { moves:22, targets:{🟡:20,🟣:18}, reward:110, msg:"Жёлтое золото!" },
+  12: { moves:18, targets:{🌸:15,🔴:15}, reward:120, msg:"Быстрее!" },
+};
+for(let i=13;i<=30;i++){
+  LEVELS[i] = {
+    moves: 18+Math.floor(i/3),
+    targets: {[EMOJIS[i%6]]:15+i, [EMOJIS[(i+2)%6]]:10+i},
+    reward: 100+i*10,
+    msg: `Уровень ${i} — всё сложнее!`
+  };
+}
+
+// ============ INIT ============
+function save() {
+  localStorage.setItem('city', state.city);
+  localStorage.setItem('lives', state.lives);
+  localStorage.setItem('currentLevel', state.currentLevel);
+  localStorage.setItem('totalStars', state.totalStars);
+  localStorage.setItem('bombs', state.bombs);
+  localStorage.setItem('shuffles', state.shuffles);
+  localStorage.setItem('vip', state.vip);
+  localStorage.setItem('completedLevels', JSON.stringify(state.completedLevels));
+}
+
+function updateHeader() {
+  document.getElementById('cityBalance').textContent = state.city;
+  document.getElementById('livesCount').textContent = state.lives;
+  document.getElementById('shopBalance').textContent = state.city;
+  document.getElementById('levelLabel').textContent = `Уровень ${state.currentLevel}`;
+  document.getElementById('chapterLabel').textContent = `Глава ${Math.ceil(state.currentLevel/10)} • ${state.currentLevel <= 10 ? 'Волшебный лес' : state.currentLevel <= 20 ? 'Тёмный замок' : 'Небесный остров'}`;
+}
+
+function showNotif(text) {
+  const n = document.getElementById('notif');
+  n.textContent = text;
+  n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'), 2000);
+}
+
+// ============ MAP ============
+function buildMap() {
+  const grid = document.getElementById('levelsGrid');
+  grid.innerHTML = '';
+  for(let i=1;i<=20;i++) {
+    const btn = document.createElement('div');
+    btn.className = 'level-btn';
+    const completed = state.completedLevels[i];
+    if(completed) {
+      btn.className += ' completed';
+      btn.innerHTML = `<div class="num">${i}</div><div class="stars-small">${'⭐'.repeat(completed)}</div>`;
+      btn.onclick = ()=>startLevel(i);
+    } else if(i === state.currentLevel) {
+      btn.className += ' current';
+      btn.innerHTML = `<div class="num" style="color:#1a0533">${i}</div><div class="stars-small" style="color:#1a0533">▶️</div>`;
+      btn.onclick = ()=>startLevel(i);
+    } else if(i <= state.currentLevel) {
+      btn.className += ' unlocked';
+      btn.innerHTML = `<div class="num">${i}</div>`;
+      btn.onclick = ()=>startLevel(i);
+    } else {
+      btn.className += ' locked';
+      btn.innerHTML = `<div class="lock">🔒</div><div class="num" style="font-size:12px">${i}</div>`;
+    }
+    grid.appendChild(btn);
+  }
+}
+
+// ============ GAME ============
+function startLevel(lvl) {
+  if(state.lives <= 0) { showNotif('❤️ Нет жизней! Купи в магазине'); return; }
+  state.currentLevel = lvl;
+  const cfg = LEVELS[lvl] || LEVELS[10];
+  moves = cfg.moves;
+  score = 0;
+  targets = {...cfg.targets};
+  targetProgress = {};
+  for(let k in targets) targetProgress[k] = 0;
+  gameActive = true;
+  document.getElementById('wizardMsg').textContent = cfg.msg;
+  updateHeader();
+  updateTargets();
+  updateMoves();
+  generateBoard();
+  showScreen('game');
+  save();
+}
+
+function generateBoard() {
+  board = [];
+  for(let r=0;r<ROWS;r++) {
+    board.push([]);
+    for(let c=0;c<COLS;c++) {
+      board[r].push(Math.floor(Math.random()*6));
+    }
+  }
+  renderBoard();
+}
+
+function renderBoard() {
+  const b = document.getElementById('board');
+  b.innerHTML = '';
+  for(let r=0;r<ROWS;r++) {
+    for(let c=0;c<COLS;c++) {
+      const cell = document.createElement('div');
+      cell.className = `cell color-${board[r][c]}`;
+      cell.textContent = EMOJIS[board[r][c]];
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+      cell.onclick = ()=>handleClick(r,c);
+      b.appendChild(cell);
+    }
+  }
+}
+
+function handleClick(r,c) {
+  if(!gameActive || moves<=0) return;
+  if(selected === null) {
+    selected = {r,c};
+    highlightCell(r,c,true);
+  } else {
+    if(selected.r===r && selected.c===c) {
+      highlightCell(r,c,false);
+      selected=null;
+      return;
+    }
+    if(isAdjacent(selected,{r,c})) {
+      highlightCell(selected.r,selected.c,false);
+      swapCells(selected.r,selected.c,r,c);
+      selected=null;
+    } else {
+      highlightCell(selected.r,selected.c,false);
+      selected={r,c};
+      highlightCell(r,c,true);
+    }
+  }
+}
+
+function isAdjacent(a,b) {
+  return (Math.abs(a.r-b.r)===1&&a.c===b.c)||(Math.abs(a.c-b.c)===1&&a.r===b.r);
+}
+
+function swapCells(r1,c1,r2,c2) {
+  let tmp = board[r1][c1];
+  board[r1][c1] = board[r2][c2];
+  board[r2][c2] = tmp;
+  renderBoard();
+  moves--;
+  updateMoves();
+  setTimeout(()=>{
+    let matched = findMatches();
+    if(matched.length>0) {
+      processMatches(matched);
+    } else {
+      // swap back
+      tmp = board[r1][c1];
+      board[r1][c1] = board[r2][c2];
+      board[r2][c2] = tmp;
+      renderBoard();
+      moves++;
+      updateMoves();
+    }
+  },100);
+}
+
+function findMatches() {
+  let matched = new Set();
+  // Horizontal
+  for(let r=0;r<ROWS;r++) {
+    for(let c=0;c<COLS-2;c++) {
+      if(board[r][c]===board[r][c+1]&&board[r][c]===board[r][c+2]) {
+        matched.add(`${r},${c}`);matched.add(`${r},${c+1}`);matched.add(`${r},${c+2}`);
+        if(c+3<COLS&&board[r][c]===board[r][c+3]){matched.add(`${r},${c+3}`);}
+        if(c+4<COLS&&board[r][c]===board[r][c+4]){matched.add(`${r},${c+4}`);}
+      }
+    }
+  }
+  // Vertical
+  for(let c=0;c<COLS;c++) {
+    for(let r=0;r<ROWS-2;r++) {
+      if(board[r][c]===board[r+1][c]&&board[r][c]===board[r+2][c]) {
+        matched.add(`${r},${c}`);matched.add(`${r+1},${c}`);matched.add(`${r+2},${c}`);
+        if(r+3<ROWS&&board[r][c]===board[r+3][c]){matched.add(`${r+3},${c}`);}
+      }
+    }
+  }
+  return [...matched].map(s=>{let[r,c]=s.split(',');return{r:+r,c:+c};});
+}
+
+function processMatches(matched) {
+  matched.forEach(({r,c})=>{
+    const emoji = EMOJIS[board[r][c]];
+    if(targetProgress[emoji] !== undefined) {
+      targetProgress[emoji] = Math.min(targetProgress[emoji]+1, targets[emoji]);
+    }
+    score += 10;
+    board[r][c] = -1;
+  });
+  document.getElementById('scoreDisplay').textContent = score;
+  renderBoard();
+  updateTargets();
+  updateProgress();
+  setTimeout(()=>{ dropCells(); }, 300);
+  if(checkWin()) { setTimeout(()=>showWin(),500); return; }
+  if(moves<=0) { setTimeout(()=>showLose(),500); }
+}
+
+function dropCells() {
+  for(let c=0;c<COLS;c++) {
+    for(let r=ROWS-1;r>=0;r--) {
+      if(board[r][c]===-1) {
+        for(let r2=r-1;r2>=0;r2--) {
+          if(board[r2][c]!==-1) {
+            board[r][c]=board[r2][c];
+            board[r2][c]=-1;
+            break;
+          }
+        }
+      }
+    }
+    for(let r=0;r<ROWS;r++) {
+      if(board[r][c]===-1) board[r][c]=Math.floor(Math.random()*6);
+    }
+  }
+  renderBoard();
+  setTimeout(()=>{
+    let m = findMatches();
+    if(m.length>0) processMatches(m);
+  },300);
+}
+
+function checkWin() {
+  for(let k in targets) {
+    if((targetProgress[k]||0) < targets[k]) return false;
+  }
+  return true;
+}
+
+function updateTargets() {
+  const d = document.getElementById('targetsDisplay');
+  d.innerHTML = '';
+  for(let emoji in targets) {
+    const done = (targetProgress[emoji]||0) >= targets[emoji];
+    const div = document.createElement('div');
+    div.className = `target${done?' completed':''}`;
+    div.innerHTML = `<div class="emoji">${emoji}</div><div class="count">${Math.min(targetProgress[emoji]||0,targets[emoji])}/${targets[emoji]}</div>`;
+    d.appendChild(div);
+  }
+}
+
+function updateProgress() {
+  let total=0, done=0;
+  for(let k in targets){total+=targets[k];done+=Math.min(targetProgress[k]||0,targets[k]);}
+  const pct = total>0?Math.round(done/total*100):0;
+  const bar = document.getElementById('progressBar');
+  bar.style.width = pct+'%';
+  bar.textContent = pct+'%';
+}
+
+function updateMoves() {
+  document.getElementById('movesDisplay').textContent = moves;
+  document.getElementById('bombCount').textContent = `x${state.bombs}`;
+  document.getElementById('shuffleCount').textContent = `x${state.shuffles}`;
+}
+
+function highlightCell(r,c,on) {
+  const cells = document.querySelectorAll('.cell');
+  const idx = r*COLS+c;
+  if(cells[idx]) cells[idx].classList.toggle('selected',on);
+}
+
+// ============ WIN/LOSE ============
+function showWin() {
+  gameActive = false;
+  const cfg = LEVELS[state.currentLevel]||LEVELS[10];
+  let reward = cfg.reward;
+  if(state.vip) reward *= 2;
+  state.city += reward;
+  let stars = moves>10?3:moves>5?2:1;
+  state.totalStars += stars;
+  state.completedLevels[state.currentLevel] = stars;
+  if(state.currentLevel >= Object.keys(LEVELS).length) state.currentLevel++;
+  else state.currentLevel = Math.max(state.currentLevel, state.currentLevel+1);
+  // Fix: just increment
+  const prev = parseInt(Object.keys(state.completedLevels).sort((a,b)=>b-a)[0]||1);
+  if(!state.completedLevels[prev+1]) state.currentLevel = prev+1;
+  document.getElementById('winStars').textContent = '⭐'.repeat(stars)+'☆'.repeat(3-stars);
+  document.getElementById('winReward').textContent = `+${reward} 🪙 CITY`;
+  document.getElementById('winPopup').classList.add('show');
+  updateHeader();
+  save();
+}
+
+function showLose() {
+  gameActive = false;
+  state.lives = Math.max(0, state.lives-1);
+  updateHeader();
+  save();
+  document.getElementById('losePopup').classList.add('show');
+}
+
+function nextLevel() {
+  document.getElementById('winPopup').classList.remove('show');
+  const next = Math.max(...Object.keys(state.completedLevels).map(Number))+1;
+  if(LEVELS[next]) startLevel(next);
+  else { showNotif('🎉 Все уровни пройдены!'); goToMap(); }
+}
+
+function restartLevel() {
+  document.getElementById('losePopup').classList.remove('show');
+  startLevel(state.currentLevel);
+}
+
+function addMoves() {
+  if(state.city<400){showNotif('❌ Не хватает CITY!');return;}
+  state.city -= 400;
+  moves += 5;
+  gameActive = true;
+  document.getElementById('losePopup').classList.remove('show');
+  updateHeader();
+  updateMoves();
+  save();
+}
+
+function goToMap() {
+  document.getElementById('winPopup').classList.remove('show');
+  document.getElementById('losePopup').classList.remove('show');
+  buildMap();
+  showScreen('map');
+}
+
+// ============ BOOSTERS ============
+function useBooster(type) {
+  if(type==='bomb') {
+    if(state.bombs<=0){showNotif('❌ Нет бомб! Купи в магазине');return;}
+    // explode random 9 cells
+    const r=2+Math.floor(Math.random()*3), c=2+Math.floor(Math.random()*3);
+    let matched=[];
+    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+      if(r+dr>=0&&r+dr<ROWS&&c+dc>=0&&c+dc<COLS) matched.push({r:r+dr,c:c+dc});
+    }
+    state.bombs--;
+    processMatches(matched);
+    updateMoves();
+    showNotif('💣 Бомба!');
+  } else if(type==='shuffle') {
+    if(state.shuffles<=0){showNotif('❌ Нет перемешиваний!');return;}
+    state.shuffles--;
+    generateBoard();
+    updateMoves();
+    showNotif('🔀 Перемешано!');
+  } else if(type==='hint') {
+    // highlight a valid move
+    showNotif('💡 Попробуй сделать матч!');
+  }
+  save();
+}
+
+// ============ SHOP ============
+function buyItem(item, cost) {
+  if(state.city < cost) { showNotif(`❌ Нужно ${cost} 🪙 CITY!`); return; }
+  state.city -= cost;
+  if(item==='lives') { state.lives = Math.min(5, state.lives+5); showNotif('❤️ +5 жизней!'); }
+  else if(item==='bomb') { state.bombs += 3; showNotif('💣 +3 бомбы!'); }
+  else if(item==='shuffle') { state.shuffles += 3; showNotif('🔀 +3 перемешивания!'); }
+  else if(item==='moves') { moves += 5; updateMoves(); showNotif('+5 ходов!'); }
+  else if(item==='vip') { state.vip = true; showNotif('💎 VIP активирован! x2 CITY!'); }
+  updateHeader();
+  save();
+}
+
+function withdrawCity() {
+  if(state.city < 1000) { showNotif('❌ Минимум 1000 CITY для вывода!'); return; }
+  showNotif(`🚀 Запрос на вывод ${state.city} CITY отправлен!`);
+  // Here you would integrate with your Telegram bot
+  if(window.Telegram?.WebApp) {
+    window.Telegram.WebApp.sendData(JSON.stringify({action:'withdraw',amount:state.city}));
+  }
+}
+
+// ============ SCREENS ============
+function showScreen(name) {
+  document.getElementById('mapScreen').classList.remove('active');
+  document.getElementById('gameScreen').classList.remove('active');
+  document.getElementById('shopScreen').classList.remove('active');
+  document.getElementById('navMap').classList.remove('active');
+  document.getElementById('navShop').classList.remove('active');
+  document.getElementById(`${name}Screen`).classList.add('active');
+  if(name==='map'){document.getElementById('navMap').classList.add('active');buildMap();}
+  if(name==='shop'){document.getElementById('navShop').classList.add('active');}
+}
+
+function showProfile() {
+  document.getElementById('profileCity').textContent = state.city;
+  document.getElementById('profileLevel').textContent = state.currentLevel;
+  document.getElementById('profileStars').textContent = state.totalStars;
+  document.getElementById('profileLives').textContent = state.lives;
+  document.getElementById('profilePopup').classList.add('show');
+}
+function closeProfile() {
+  document.getElementById('profilePopup').classList.remove('show');
+}
+
+// ============ TELEGRAM WEBAPP ============
+if(window.Telegram?.WebApp) {
+  window.Telegram.WebApp.ready();
+  window.Telegram.WebApp.expand();
+}
+
+// ============ START ============
+updateHeader();
+buildMap();
+</script>
+</body>
+</html>
