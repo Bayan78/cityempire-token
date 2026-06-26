@@ -248,6 +248,7 @@
     padding: 10px 15px;
     max-width: 400px;
     margin: 0 auto;
+    min-height: 300px;
   }
   .level-btn {
     aspect-ratio: 1;
@@ -1003,6 +1004,8 @@ if(window.Telegram?.WebApp) {
 // ============ START ============
 updateHeader();
 buildMap();
+// Force show levels
+setTimeout(buildMap, 500);
 </script>
 </body>
 </html>
